@@ -1,0 +1,45 @@
+# Tests on Linux, because the CodSpeed runner works on Linux only.
+#
+# Six tests use a fake runner and need CLOCK_MONOTONIC. They run on Linux and
+# ExUnit skips them elsewhere. The "No test is skipped" step makes sure that
+# they run here.
+#
+# Elixir 1.15 is the oldest version we support. It has no JSON module, so
+# this job uses Jason. The newer versions use the JSON module.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { elixir: "1.15", otp: "26" }
+          - { elixir: "1.18", otp: "27" }
+          - { elixir: "1.20", otp: "28", lint: true }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
+        with:
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
+      - run: mix deps.get
+      - name: Formatting
+        if: matrix.lint
+        run: mix format --check-formatted
+      - run: mix compile --warnings-as-errors
+      - name: Tests
+        run: mix test | tee test.log
+      - name: No test is skipped
+        run: "! grep -q 'excluded' test.log"
