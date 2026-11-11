@@ -64,7 +64,10 @@ defmodule CodSpeed.BencheeTest do
 
   test "one and two samples" do
     s = stats_for([100])
-    assert {s.min_ns, s.mean_ns, s.median_ns, s.q1_ns, s.q3_ns} == {100.0, 100.0, 100.0, 100.0, 100.0}
+
+    assert {s.min_ns, s.mean_ns, s.median_ns, s.q1_ns, s.q3_ns} ==
+             {100.0, 100.0, 100.0, 100.0, 100.0}
+
     assert s.stdev_ns == 0.0
     assert s.rounds == 1
 
@@ -76,20 +79,32 @@ defmodule CodSpeed.BencheeTest do
   test "names, uris and config" do
     report =
       CodSpeed.Benchee.format(
-        suite([scenario("fib", [1, 2, 3]), scenario("fib", [1, 2, 3], "big"), scenario("memory_only", [])]),
+        suite([
+          scenario("fib", [1, 2, 3]),
+          scenario("fib", [1, 2, 3], "big"),
+          scenario("memory_only", [])
+        ]),
         %{file: "bench/fib_bench.exs", group: "Fib"}
       )
 
     assert [a, b] = report.benchmarks
     assert {a.name, a.uri} == {"fib", "bench/fib_bench.exs::Fib::fib"}
     assert {b.name, b.uri} == {"fib[big]", "bench/fib_bench.exs::Fib::fib[big]"}
-    assert a.config == %{warmup_time_ns: 2_000_000_000, max_time_ns: 5_000_000_000, min_round_time_ns: 0}
+
+    assert a.config == %{
+             warmup_time_ns: 2_000_000_000,
+             max_time_ns: 5_000_000_000,
+             min_round_time_ns: 0
+           }
+
     assert report.instrument == %{type: "walltime"}
   end
 
   describe "write/2" do
     setup do
-      folder = Path.join(System.tmp_dir!(), "codspeed_benchee_#{System.unique_integer([:positive])}")
+      folder =
+        Path.join(System.tmp_dir!(), "codspeed_benchee_#{System.unique_integer([:positive])}")
+
       on_exit(fn -> File.rm_rf!(folder) end)
       {:ok, folder: folder}
     end
