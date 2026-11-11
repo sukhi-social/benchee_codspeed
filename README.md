@@ -152,3 +152,7 @@ The runner uses the clock `CLOCK_MONOTONIC`. The BEAM on macOS uses a
 different clock. Six tests use a fake runner and need `CLOCK_MONOTONIC`.
 These tests have the tag `clock_monotonic`. ExUnit skips them on systems
 other than Linux.
+
+## License
+
+This library has the MIT license. Read the file `LICENSE`.
