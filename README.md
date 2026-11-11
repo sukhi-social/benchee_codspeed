@@ -1,24 +1,41 @@
 # benchee_codspeed
 
-[Benchee](https://hex.pm/packages/benchee) を [CodSpeed](https://codspeed.io) の
-**walltime モード**につなぐ、Elixir のライブラリです。
+This library connects [Benchee](https://hex.pm/packages/benchee) to
+[CodSpeed](https://codspeed.io). It supports walltime mode only.
 
-ふたつのことをします。
+The library does two jobs:
 
-1. **結果**: Benchee の測定値を CodSpeed の walltime JSON にして、
-   `$CODSPEED_PROFILE_FOLDER/results/<os pid>.json` に書く。
-2. **プロファイル**（あれば）: runner と FIFO で話して、各ベンチマークが走っている間だけ
-   `perf` にサンプルを取ってもらい、フレームグラフの正しいベンチマークに結びつける。
+1. It writes the Benchee results in the CodSpeed walltime format.
+2. It tells the CodSpeed runner when each benchmark starts and stops.
+   The runner then records `perf` samples for that benchmark only.
 
-CodSpeed の外（`CODSPEED_PROFILE_FOLDER` も runner も無いとき）では、どちらも何もしません。
-おなじスクリプトが、手元でもそのまま動きます。
+Outside CodSpeed, the library does nothing. The same script runs on your
+computer without change.
 
-## 使いかた
+## Requirements
 
-`CodSpeed.Benchee.run/2` は、`Benchee.run/2` に CodSpeed がついたものです。
+- Elixir 1.15 or later.
+- Benchee 1.3 or later.
+- For profiling: the CodSpeed runner on Linux, in walltime mode.
+
+Elixir 1.17 and earlier have no `JSON` module. For these versions, add the
+`:jason` package to your dependencies.
+
+## Installation
+
+The package is not on Hex yet. Add it from GitHub to the dependencies in
+`mix.exs`:
 
 ```elixir
-CodSpeed.Benchee.run(
+{:benchee_codspeed, github: "sukhi-social/benchee_codspeed", only: :dev}
+```
+
+## Usage
+
+Replace `Benchee.run/2` with `Benchee.Codspeed.run/2`:
+
+```elixir
+Benchee.Codspeed.run(
   %{
     "fib_20" => fn -> Fib.run(20) end,
     "fib_25" => fn -> Fib.run(25) end
@@ -30,35 +47,100 @@ CodSpeed.Benchee.run(
 )
 ```
 
-`:file`（git ルートからの相対パス）と `:group` が CodSpeed 用で、ほかは Benchee に渡ります。
-CodSpeed CLI から走らせます。
+Run the script with the CodSpeed CLI:
 
 ```bash
 codspeed run -m walltime -- mix run bench/fib_bench.exs
 ```
 
-結果ファイルだけがほしいときは、フォーマッタとして直接足せます。
+Or use the CodSpeed GitHub Action with `mode: walltime`.
+
+## Options
+
+`Benchee.Codspeed.run/2` has two options of its own. It sends all other
+options to Benchee.
+
+| Option   | Meaning                                         | Default                  |
+| -------- | ----------------------------------------------- | ------------------------ |
+| `:file`  | Path of the benchmark file, from the git root.  | `"bench/benchmarks.exs"` |
+| `:group` | Name of a group of benchmarks (optional).       | none                     |
+
+The URI of a benchmark is `file::group::name`. If you use Benchee inputs,
+the name is `job[input]`.
+
+By default, Benchee uses the console formatter. The library adds its own
+formatter to the list. Do not add it yourself.
+
+## Formatter only
+
+To get the results file without profiling, add the formatter to the
+`:formatters` option of `Benchee.run/2`:
 
 ```elixir
 Benchee.run(jobs,
-  formatters: [Benchee.Formatters.Console, {CodSpeed.Benchee, file: "bench/fib_bench.exs"}]
+  formatters: [
+    Benchee.Formatters.Console,
+    {Benchee.Codspeed, file: "bench/fib_bench.exs"}
+  ]
 )
 ```
 
-BEAM のコードにシンボル名をつけたいときは、perf map を有効にして起動します
-（`ELIXIR_ERL_OPTIONS="+JPperf true"`）。
+The formatter has the same `:file` and `:group` options. It has one more
+option, `:profile_folder`. This option replaces `CODSPEED_PROFILE_FOLDER`.
 
-詳しい仕様と制限は、`lib/codspeed/benchee.ex` の moduledoc に書いてあります。
+## Results file
 
-## 構成
+The formatter writes the results to this path:
 
-| ファイル | 役目 |
-|---|---|
-| `lib/codspeed/benchee.ex` | Benchee のフォーマッタと `run/2`（統計と結果ファイル） |
-| `lib/codspeed/runner.ex` | runner の FIFO プロトコルのクライアント（GenServer） |
-| `lib/codspeed/protocol.ex` | ワイヤ形式（bincode 1.x）。副作用なしの関数だけ |
+```text
+$CODSPEED_PROFILE_FOLDER/results/<pid>.json
+```
 
-## 開発
+`<pid>` is the ID of the operating system process. Several calls to `run/2`
+in one process write to the same file. If `CODSPEED_PROFILE_FOLDER` is not
+set, the formatter writes no file.
+
+## Profiling
+
+The library connects to the runner only when the environment variable
+`CODSPEED_ENV` is set. If the connection fails, the library prints a warning.
+The benchmarks then run without profiling, and the results file is still
+written.
+
+When the connection works, `run/2` profiles each scenario. A scenario is one
+job with one input. The profiled window covers the whole scenario. This
+includes the Benchee warmup.
+
+Profiling windows must not overlap. For this reason, `run/2` sets
+`parallel: 1` and `pre_check: false`. Your own `before_scenario` and
+`after_scenario` hooks stay in place. Their setup runs before the window
+opens. Their teardown runs after the window closes.
+
+To see the names of BEAM functions in the flame graph, start the VM with the
+perf map:
+
+```bash
+ELIXIR_ERL_OPTIONS="+JPperf true" codspeed run -m walltime -- mix run bench/fib_bench.exs
+```
+
+## Limits
+
+- The runner works on Linux only.
+- The library does not set markers inside a profiling window.
+- The library does not support `__codspeed_root_frame__`.
+- Two inputs can have the same value under different names. The library
+  cannot tell them apart. It prints a warning, and the profile can go to
+  the wrong benchmark.
+
+## Modules
+
+| Module                      | Purpose                                              |
+| --------------------------- | ---------------------------------------------------- |
+| `Benchee.Codspeed`          | Formatter, `run/2`, and statistics.                  |
+| `Benchee.Codspeed.Runner`   | Client for the FIFO protocol of the runner.          |
+| `Benchee.Codspeed.Protocol` | Wire format of the protocol. It has no side effects. |
+
+## Development
 
 ```bash
 mix deps.get
@@ -66,12 +148,7 @@ mix test
 mix format --check-formatted
 ```
 
-runner は Linux 専用で、時刻に `CLOCK_MONOTONIC` を使います。macOS の BEAM は別の時計
-（`CLOCK_UPTIME_RAW`）なので、fake runner を通る 6 つのテスト（`@tag :clock_monotonic`）は
-Linux 以外では除外されます。Linux では全部走ります。
-
-JSON は Elixir 1.18 以降なら組み込みの `JSON`、それより古ければ `:jason` を使います。
-
-## TODO
-
-- モジュール名を `Benchee.Codspeed` に改名する（いまは `CodSpeed.Benchee`）
+The runner uses the clock `CLOCK_MONOTONIC`. The BEAM on macOS uses a
+different clock. Six tests use a fake runner and need `CLOCK_MONOTONIC`.
+These tests have the tag `clock_monotonic`. ExUnit skips them on systems
+other than Linux.
