@@ -1,5 +1,7 @@
 # benchee_codspeed
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/sukhi-social/benchee_codspeed?utm_source=badge)
+
 This library connects [Benchee](https://hex.pm/packages/benchee) to
 [CodSpeed](https://codspeed.io). It supports walltime mode only.
 
@@ -147,6 +149,15 @@ mix deps.get
 mix test
 mix format --check-formatted
 ```
+
+The file `bench/benchmarks.exs` has benchmarks of the library. They use the
+library itself. To run them:
+
+```bash
+mix run bench/benchmarks.exs
+```
+
+The `codspeed` workflow runs them on CodSpeed macro runners, in walltime mode.
 
 The runner uses the clock `CLOCK_MONOTONIC`. The BEAM on macOS uses a
 different clock. Six tests use a fake runner and need `CLOCK_MONOTONIC`.
