@@ -1,4 +1,4 @@
-defmodule CodSpeed.Runner do
+defmodule Benchee.Codspeed.Runner do
   @moduledoc """
   Client for the CodSpeed runner's FIFO protocol (walltime mode).
 
@@ -6,17 +6,17 @@ defmodule CodSpeed.Runner do
   CPU samples with `perf`, but keeps `perf` **paused** until the benchmarked
   process asks it to sample. This module is that conversation:
 
-      CodSpeed.Runner.connect(integration: {"codspeed-elixir", "0.1.0"})
+      Benchee.Codspeed.Runner.connect(integration: {"codspeed-elixir", "0.1.0"})
 
-      CodSpeed.Runner.start_benchmark()        # perf on
+      Benchee.Codspeed.Runner.start_benchmark()        # perf on
       run_the_benchmark()
-      CodSpeed.Runner.stop_benchmark()         # perf off
-      CodSpeed.Runner.set_executed_benchmark("bench/x.exs::Group::name")
+      Benchee.Codspeed.Runner.stop_benchmark()         # perf off
+      Benchee.Codspeed.Runner.set_executed_benchmark("bench/x.exs::Group::name")
 
   Windows and URIs are matched up in order by the runner, so every
   `start_benchmark/0` ... `stop_benchmark/0` pair must be followed by exactly one
   `set_executed_benchmark/1`, and the URI must be the one written to the
-  walltime results file (see `CodSpeed.Benchee.benchmark_uri/4`).
+  walltime results file (see `Benchee.Codspeed.benchmark_uri/4`).
 
   ## Behaviour
 
@@ -50,7 +50,7 @@ defmodule CodSpeed.Runner do
 
   use GenServer
 
-  alias CodSpeed.Protocol
+  alias Benchee.Codspeed.Protocol
 
   @default_ctl "/tmp/runner.ctl.fifo"
   @default_ack "/tmp/runner.ack.fifo"
@@ -165,7 +165,7 @@ defmodule CodSpeed.Runner do
     info = :erlang.system_info(:os_monotonic_time_source)
 
     unless Keyword.get(info, :clock_id) == :CLOCK_MONOTONIC do
-      raise "CodSpeed.Runner needs the BEAM to use CLOCK_MONOTONIC, got: #{inspect(info)}"
+      raise "Benchee.Codspeed.Runner needs the BEAM to use CLOCK_MONOTONIC, got: #{inspect(info)}"
     end
 
     # `time` is expressed in 1/resolution seconds.

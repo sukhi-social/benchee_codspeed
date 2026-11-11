@@ -1,4 +1,4 @@
-defmodule CodSpeed.BencheeTest do
+defmodule Benchee.CodspeedTest do
   use ExUnit.Case, async: false
 
   # Expected values are taken from the unit tests of the CodSpeed runner
@@ -16,7 +16,7 @@ defmodule CodSpeed.BencheeTest do
   defp stats_for(samples) do
     # Benchee passes formatter options as a map.
     %{benchmarks: [%{stats: stats}]} =
-      CodSpeed.Benchee.format(suite([scenario("x", samples)]), %{file: "f"})
+      Benchee.Codspeed.format(suite([scenario("x", samples)]), %{file: "f"})
 
     stats
   end
@@ -78,7 +78,7 @@ defmodule CodSpeed.BencheeTest do
 
   test "names, uris and config" do
     report =
-      CodSpeed.Benchee.format(
+      Benchee.Codspeed.format(
         suite([
           scenario("fib", [1, 2, 3]),
           scenario("fib", [1, 2, 3], "big"),
@@ -111,17 +111,17 @@ defmodule CodSpeed.BencheeTest do
 
     test "is a no-op without a profile folder", %{folder: folder} do
       System.delete_env("CODSPEED_PROFILE_FOLDER")
-      report = CodSpeed.Benchee.format(suite([scenario("x", [1, 2, 3])]), %{})
-      assert CodSpeed.Benchee.write(report, %{}) == :ok
+      report = Benchee.Codspeed.format(suite([scenario("x", [1, 2, 3])]), %{})
+      assert Benchee.Codspeed.write(report, %{}) == :ok
       refute File.exists?(folder)
     end
 
     test "writes results/<pid>.json and merges repeated runs", %{folder: folder} do
-      report = CodSpeed.Benchee.format(suite([scenario("x", [1, 2, 3])]), %{})
+      report = Benchee.Codspeed.format(suite([scenario("x", [1, 2, 3])]), %{})
       opts = %{profile_folder: folder}
 
-      assert CodSpeed.Benchee.write(report, opts) == :ok
-      assert CodSpeed.Benchee.write(report, opts) == :ok
+      assert Benchee.Codspeed.write(report, opts) == :ok
+      assert Benchee.Codspeed.write(report, opts) == :ok
 
       assert [path] = Path.wildcard(Path.join(folder, "results/*.json"))
       assert Path.basename(path, ".json") == :os.getpid() |> List.to_string()

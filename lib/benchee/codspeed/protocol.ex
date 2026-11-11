@@ -1,4 +1,4 @@
-defmodule CodSpeed.Protocol do
+defmodule Benchee.Codspeed.Protocol do
   @moduledoc """
   Wire format of the CodSpeed runner FIFO protocol (pure functions, no I/O).
 

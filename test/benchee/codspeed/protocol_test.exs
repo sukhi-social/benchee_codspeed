@@ -1,7 +1,7 @@
-defmodule CodSpeed.ProtocolTest do
+defmodule Benchee.Codspeed.ProtocolTest do
   use ExUnit.Case, async: true
 
-  alias CodSpeed.Protocol
+  alias Benchee.Codspeed.Protocol
 
   # Byte vectors produced by the Rust runner itself (bincode 1.x), taken from
   # instrument-hooks `src/tests/deserialize_rust/serialized.zig`. They pin the wire

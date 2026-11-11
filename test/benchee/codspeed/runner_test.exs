@@ -1,10 +1,10 @@
-defmodule CodSpeed.Test.FakeRunner do
+defmodule Benchee.Codspeed.Test.FakeRunner do
   @moduledoc false
   # A minimal stand-in for the CodSpeed runner's FIFO server. Every decoded
   # command is forwarded to the test process as `{:fake_cmd, command, ts}`, where
   # `ts` is the CLOCK_MONOTONIC receive time (like the runner takes).
 
-  alias CodSpeed.Protocol
+  alias Benchee.Codspeed.Protocol
 
   def start(opts \\ []) do
     id = System.unique_integer([:positive])
@@ -59,7 +59,7 @@ defmodule CodSpeed.Test.FakeRunner do
          true <- len < 1_000_000,
          {:ok, body} <- read_exact(c, len),
          {:ok, cmd} <- Protocol.decode(body) do
-      send(parent, {:fake_cmd, cmd, CodSpeed.Runner.current_timestamp()})
+      send(parent, {:fake_cmd, cmd, Benchee.Codspeed.Runner.current_timestamp()})
       handled = handled + 1
 
       silent_after = Keyword.get(opts, :silent_after)
@@ -93,11 +93,11 @@ defmodule CodSpeed.Test.FakeRunner do
   end
 end
 
-defmodule CodSpeed.RunnerTest do
+defmodule Benchee.Codspeed.RunnerTest do
   use ExUnit.Case, async: false
 
-  alias CodSpeed.Runner
-  alias CodSpeed.Test.FakeRunner
+  alias Benchee.Codspeed.Runner
+  alias Benchee.Codspeed.Test.FakeRunner
 
   setup do
     on_exit(fn -> Runner.disconnect() end)
@@ -246,11 +246,11 @@ defmodule CodSpeed.RunnerTest do
   end
 end
 
-defmodule CodSpeed.BencheeRunTest do
+defmodule Benchee.CodspeedRunTest do
   use ExUnit.Case, async: false
 
-  alias CodSpeed.Runner
-  alias CodSpeed.Test.FakeRunner
+  alias Benchee.Codspeed.Runner
+  alias Benchee.Codspeed.Test.FakeRunner
 
   setup do
     folder = Path.join(System.tmp_dir!(), "codspeed_run_#{System.unique_integer([:positive])}")
@@ -304,7 +304,7 @@ defmodule CodSpeed.BencheeRunTest do
         "b" => fn _input -> Enum.sum(1..200) end
       }
 
-      CodSpeed.Benchee.run(
+      Benchee.Codspeed.run(
         jobs,
         [
           file: "bench/x.exs",
@@ -403,7 +403,7 @@ defmodule CodSpeed.BencheeRunTest do
     System.delete_env("CODSPEED_ENV")
     on_exit(fn -> if previous, do: System.put_env("CODSPEED_ENV", previous) end)
 
-    CodSpeed.Benchee.run(%{"a" => fn -> Enum.sum(1..10) end}, [file: "bench/y.exs"] ++ @quiet)
+    Benchee.Codspeed.run(%{"a" => fn -> Enum.sum(1..10) end}, [file: "bench/y.exs"] ++ @quiet)
 
     refute Runner.connected?()
     assert [_one_file] = Path.wildcard(Path.join([folder, "results", "*.json"]))

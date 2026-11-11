@@ -1,4 +1,4 @@
-defmodule CodSpeed.Benchee do
+defmodule Benchee.Codspeed do
   @moduledoc """
   [Benchee](https://hex.pm/packages/benchee) integration for
   [CodSpeed](https://codspeed.io) in **walltime** mode.
@@ -9,7 +9,7 @@ defmodule CodSpeed.Benchee do
        CodSpeed walltime JSON and writes it to
        `$CODSPEED_PROFILE_FOLDER/results/<os pid>.json`.
     2. **Profiling** (optional): `run/2` also talks to the runner over its FIFO
-       protocol (`CodSpeed.Runner`) so that `perf` samples are recorded while each
+       protocol (`Benchee.Codspeed.Runner`) so that `perf` samples are recorded while each
        benchmark runs and are attached to the right benchmark in the flame graph.
 
   Outside of CodSpeed (no `CODSPEED_PROFILE_FOLDER`, no runner) both parts do
@@ -19,7 +19,7 @@ defmodule CodSpeed.Benchee do
 
   `run/2` is `Benchee.run/2` plus CodSpeed:
 
-      CodSpeed.Benchee.run(
+      Benchee.Codspeed.run(
         %{
           "fib_20" => fn -> Fib.run(20) end,
           "fib_25" => fn -> Fib.run(25) end
@@ -40,7 +40,7 @@ defmodule CodSpeed.Benchee do
   If you only want the results file, use the formatter directly:
 
       Benchee.run(jobs,
-        formatters: [Benchee.Formatters.Console, {CodSpeed.Benchee, file: "bench/fib_bench.exs"}]
+        formatters: [Benchee.Formatters.Console, {Benchee.Codspeed, file: "bench/fib_bench.exs"}]
       )
 
   ## Options
@@ -85,7 +85,8 @@ defmodule CodSpeed.Benchee do
     file = Keyword.get(own, :file, @default_file)
     group = Keyword.get(own, :group)
 
-    instrumented? = CodSpeed.Runner.connect(integration: {"codspeed-elixir", @version}) == :ok
+    instrumented? =
+      Benchee.Codspeed.Runner.connect(integration: {"codspeed-elixir", @version}) == :ok
 
     formatters =
       Keyword.get(bench_opts, :formatters, [Benchee.Formatters.Console]) ++
@@ -151,13 +152,13 @@ defmodule CodSpeed.Benchee do
     before_scenario = fn input ->
       Process.put(@uri_key, benchmark_uri(file, group, job_name, input_name(input_names, input)))
       input = if user_before, do: user_before.(input), else: input
-      CodSpeed.Runner.start_benchmark()
+      Benchee.Codspeed.Runner.start_benchmark()
       input
     end
 
     after_scenario = fn input ->
-      CodSpeed.Runner.stop_benchmark()
-      CodSpeed.Runner.set_executed_benchmark(Process.delete(@uri_key))
+      Benchee.Codspeed.Runner.stop_benchmark()
+      Benchee.Codspeed.Runner.set_executed_benchmark(Process.delete(@uri_key))
       if user_after, do: user_after.(input)
       :ok
     end
@@ -371,7 +372,7 @@ defmodule CodSpeed.Benchee do
     cond do
       Code.ensure_loaded?(JSON) -> apply(JSON, :encode!, [term])
       Code.ensure_loaded?(Jason) -> apply(Jason, :encode!, [term])
-      true -> raise "CodSpeed.Benchee needs Elixir >= 1.18 (JSON) or the :jason package"
+      true -> raise "Benchee.Codspeed needs Elixir >= 1.18 (JSON) or the :jason package"
     end
   end
 
@@ -379,7 +380,7 @@ defmodule CodSpeed.Benchee do
     cond do
       Code.ensure_loaded?(JSON) -> apply(JSON, :decode!, [binary])
       Code.ensure_loaded?(Jason) -> apply(Jason, :decode!, [binary])
-      true -> raise "CodSpeed.Benchee needs Elixir >= 1.18 (JSON) or the :jason package"
+      true -> raise "Benchee.Codspeed needs Elixir >= 1.18 (JSON) or the :jason package"
     end
   end
 end
